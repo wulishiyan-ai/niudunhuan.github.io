@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>牛顿环曲率测量虚拟仿真实验</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.9.0/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.5.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <!-- 添加MathJax配置 -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)']],
+                displayMath: [['\\[', '\\]']],
+                processEscapes: true
+            },
+            svg: {
+                fontCache: 'global'
+            },
+            options: {
+                renderActions: {
+                    addMenu: [0, '', ''],
+                    checkLoading: [0, '', '']
+                }
+            }
+        };
+    </script>
+
+    <!-- 添加额外的TensorFlow依赖 -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@3.9.0/dist/tf-backend-webgl.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-cpu@3.9.0/dist/tf-backend-cpu.min.js"></script>
+    
+    <!-- 确保TensorFlow已加载 -->
+    <script>
+        // 在使用TensorFlow前确保后端已初始化
+        if (typeof tf !== 'undefined') {
+            tf.setBackend('webgl').then(() => {
+                console.log('TensorFlow.js初始化成功，使用WebGL后端');
+            }).catch(() => {
+                tf.setBackend('cpu').then(() => {
+                    console.log('TensorFlow.js初始化成功，使用CPU后端');
+                });
+            });
+        } else {
+            console.error('TensorFlow.js未能加载，页面功能可能受限');
+        }
+    </script>
+</head>
+<body>
+    <header>
+        <h1>牛顿环曲率测量虚拟仿真实验</h1>
+    </header>
+    
+    <main>
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="theory">实验原理</button>
+            <button class="tab-btn" data-tab="3d-demo">3D实验演示</button>
+            <button class="tab-btn" data-tab="simulation">仿真实验</button>
+            <button class="tab-btn" data-tab="ai-prediction">数据分析</button>
+            <button class="tab-btn" data-tab="extension">拓展内容</button>
+        </div>
+        
+        <div class="tab-content">
+            <!-- 实验原理 -->
+            <div id="theory" class="tab-pane active">
+                <div class="theory-panel">
+                    <h3>实验目的</h3>
+                    <div class="theory-content">
+                        <p>1. 了解等厚干涉的基本原理</p>
+                        <p>2. 掌握牛顿环干涉条件及形成原理</p>
+                        <p>3. 通过测量牛顿环直径，计算球面透镜的曲率半径</p>
+                        <p>4. 学习数据处理方法，提高测量精度</p>
+                    </div>
+                </div>
+                
+                <div class="theory-panel">
+                    <h3>历史背景与理论基础</h3>
+                    <div class="theory-content">
+                        <h4>1. 牛顿环的历史</h4>
+                        <div class="history-with-illustration">
+                            <div class="history-text">
+                                <p>牛顿环现象由艾萨克·牛顿（Isaac Newton）于1717年在其著作《光学》（Opticks）中首次系统描述。牛顿通过实验观察到当凸透镜与平面玻璃接触时产生的同心彩色环状干涉图样，并对这一光学现象进行了深入研究。这一发现为波动光学理论奠定了重要基础。</p>
+                                
+                                <blockquote>
+                                    牛顿环实验是光学干涉现象的经典案例，展示了光作为波的本质特性。虽然牛顿本人支持光的微粒说，但他的这一实验却为后来发展的光的波动理论提供了有力证据。
+                                </blockquote>
+                            </div>
+                            <div class="newton-rings-illustration">
+                                <div class="illustration-container">
+                                    <canvas id="history-newton-rings" width="280" height="280"></canvas>
+                                    <!-- 添加静态CSS后备方案，不依赖外部图片 -->
+                                    <div id="newton-rings-css-fallback" style="display:none; width:100%; height:100%; position:relative; background:#000; overflow:hidden;">
+                                        <!-- 使用CSS创建同心彩色圆环 -->
+                                        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:240px; height:100px; border-radius:50%; border:3px solid rgba(255,0,0,0.6); box-shadow:0 0 10px rgba(255,0,0,0.4);"></div>
+                                        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:210px; height:88px; border-radius:50%; border:3px solid rgba(255,127,0,0.6); box-shadow:0 0 10px rgba(255,127,0,0.4);"></div>
+                                        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:180px; height:76px; border-radius:50%; border:3px solid rgba(255,255,0,0.6); box-shadow:0 0 10px rgba(255,255,0,0.4);"></div>
+                                        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:150px; height:64px; border-radius:50%; border:3px solid rgba(0,255,0,0.6); box-shadow:0 0 10px rgba(0,255,0,0.4);"></div>
+                                        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:120px; height:52px; border-radius:50%; border:3px solid rgba(0,127,255,0.6); box-shadow:0 0 10px rgba(0,127,255,0.4);"></div>
+                                        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:90px; height:40px; border-radius:50%; border:3px solid rgba(75,0,255,0.6); box-shadow:0 0 10px rgba(75,0,255,0.4);"></div>
+                                        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:60px; height:28px; border-radius:50%; border:3px solid rgba(148,0,211,0.6); box-shadow:0 0 10px rgba(148,0,211,0.4);"></div>
+                                        <!-- 绘制透镜 -->
+                                        <div style="position:absolute; bottom:30px; left:50%; transform:translateX(-50%); width:240px; height:40px; background:linear-gradient(to bottom, rgba(200,230,255,0.1), rgba(200,230,255,0.3)); border-radius:50% 50% 0 0;"></div>
+                                        <!-- 绘制底部玻璃板 -->
+                                        <div style="position:absolute; bottom:10px; left:10%; width:80%; height:20px; background:rgba(200,230,255,0.2);"></div>
+                                        <!-- 顶部光源 -->
+                                        <div style="position:absolute; top:50px; left:50%; transform:translateX(-50%); width:10px; height:10px; background:rgba(255,255,200,0.9); border-radius:50%; box-shadow:0 0 20px 10px rgba(255,255,200,0.5);"></div>
+                                        <!-- 光线 -->
+                                        <div style="position:absolute; top:55px; left:50%; transform:translateX(-50%) rotate(0deg); width:2px; height:160px; background:linear-gradient(to bottom, rgba(255,255,200,0.7), rgba(255,255,200,0.1));"></div>
+                                        <div style="position:absolute; top:55px; left:50%; transform:translateX(-50%) rotate(5deg); width:1px; height:160px; background:linear-gradient(to bottom, rgba(255,255,200,0.3), rgba(255,255,200,0.05));"></div>
+                                        <div style="position:absolute; top:55px; left:50%; transform:translateX(-50%) rotate(-5deg); width:1px; height:160px; background:linear-gradient(to bottom, rgba(255,255,200,0.3), rgba(255,255,200,0.05));"></div>
+                                    </div>
+                                    <!-- 外部图片后备 -->
+                                    <img id="newton-rings-fallback" src="images/newton-rings-illustration.jpg" alt="牛顿环示意图" style="display:none; width:100%; height:100%; object-fit:cover;">
+                                </div>
+                                <p class="illustration-caption"></p>
+                            </div>
+                        </div>
+                        
+                        <h4>2. 光的干涉理论</h4>
+                        <p>干涉是两列或多列相干光波相遇时，由于相位差而产生的光强增强或减弱的现象。当两束相干光波叠加时：</p>
+                        
+                        <!-- 添加干涉原理图示 -->
+                        <div class="interference-illustration">
+                            <div class="interference-diagram">
+                                <canvas id="constructive-interference" width="320" height="180"></canvas>
+                                <p class="diagram-caption">相长干涉</p>
+                            </div>
+                            <div class="interference-diagram">
+                                <canvas id="destructive-interference" width="320" height="180"></canvas>
+                                <p class="diagram-caption">相消干涉</p>
+                            </div>
+                        </div>
+                        
+                        <script>
+                            // 确保页面加载完成后立即绘制干涉图示
+                            document.addEventListener('DOMContentLoaded', function() {
+                                // 如果全局初始化没有成功绘制，这里直接调用
+                                if (typeof drawInterferenceDiagrams === 'function') {
+                                    setTimeout(drawInterferenceDiagrams, 100);
+                                }
+                            });
+                        </script>
+                        
+                        <ul>
+                            <li><strong>相长干涉</strong>：当光程差为波长的整数倍（或相位差为2π的整数倍）时，波峰与波峰重合，光波振幅增强，形成亮条纹</li>
+                            <li><strong>相消干涉</strong>：当光程差为半波长的奇数倍（或相位差为π的奇数倍）时，波峰与波谷重合，光波振幅减弱，形成暗条纹</li>
+                        </ul>
+                        
+                        <div class="formula">
+                            \[ \Delta\varphi = \frac{2\pi}{\lambda}\cdot\Delta L \]
+                            <p>其中，Δφ为相位差，Δ<i>L</i>为光程差，λ为波长</p>
+                        </div>
+                        
+                        <h4>3. 薄膜干涉</h4>
+                        <p>牛顿环属于薄膜干涉的一种特殊情况。薄膜干涉是指光在薄膜上下表面反射形成的干涉现象。除牛顿环外，常见的薄膜干涉还包括：</p>
+                        <ul>
+                            <li>肥皂泡上的彩色条纹</li>
+                            <li>油膜在水面上形成的彩色图案</li>
+                            <li>镀膜光学元件的干涉现象</li>
+                        </ul>
+                        
+                        <!-- 添加薄膜干涉图片展示 -->
+                        <div class="thin-film-gallery">
+                            <div class="thin-film-item">
+                                <img src="images/图片5.png" alt="肥皂泡干涉" class="thin-film-image">
+                                <p>肥皂泡表面的薄膜干涉现象</p>
+                            </div>
+                            <div class="thin-film-item">
+                                <img src="images/图片6.png" alt="油膜干涉" class="thin-film-image">
+                                <p>水面油膜产生的彩色干涉图案</p>
+                            </div>
+                            <div class="thin-film-item">
+                                <img src="images/图片7.png" alt="光学镀膜干涉" class="thin-film-image">
+                                <p>光学元件表面镀膜的干涉效应</p>
+                            </div>
+                        </div>
+                        
+                        <h4>4. 等厚干涉与等倾干涉</h4>
+                        <p>光学干涉可分为两类：</p>
+                        <ul>
+                            <li><strong>等厚干涉</strong>：牛顿环属于等厚干涉，指入射光通过厚度逐渐变化的薄膜时产生的干涉</li>
+                            <li><strong>等倾干涉</strong>：如迈克尔逊干涉仪中，指入射角不同但通过相同厚度薄膜的光产生的干涉</li>
+                        </ul>
+                        
+                        <!-- 添加等厚干涉与等倾干涉示意图 -->
+                        <div class="interference-types">
+                            <div class="interference-type-item">
+                                <div class="interference-diagram">
+                                    <canvas id="equal-thickness-diagram" width="320" height="200"></canvas>
+                                    <p class="diagram-caption">等厚干涉示意图</p>
+                                </div>
+                                <div class="interference-description">
+                                    <p>等厚干涉中，薄膜厚度沿空间坐标变化，而入射角保持不变。如图所示，光线穿过厚度不同的薄膜区域，在不同位置产生不同的光程差，从而形成干涉条纹。</p>
+                                </div>
+                            </div>
+                            <div class="interference-type-item">
+                                <div class="interference-diagram">
+                                    <canvas id="equal-inclination-diagram" width="320" height="200"></canvas>
+                                    <p class="diagram-caption">等倾干涉示意图</p>
+                                </div>
+                                <div class="interference-description">
+                                    <p>等倾干涉中，薄膜厚度相同，但光线以不同角度入射。不同入射角导致不同的光程差，从而在观察面上形成同心环状干涉条纹，每个环上的入射角度相同。</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <script>
+                            // 页面加载完成后绘制等厚与等倾干涉示意图
+                            document.addEventListener('DOMContentLoaded', function() {
+                                // 等厚干涉示意图
+                                const drawEqualThicknessDiagram = function() {
+                                    const canvas = document.getElementById('equal-thickness-diagram');
+                                    if (!canvas) return;
+                                    
+                                    const ctx = canvas.getContext('2d');
+                                    if (!ctx) return;
+                                    
+                                    // 清空画布
+                                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                    
+                                    // 绘制楔形薄膜
+                                    ctx.fillStyle = 'rgba(173, 216, 230, 0.5)';
+                                    ctx.beginPath();
+                                    ctx.moveTo(40, 120);
+                                    ctx.lineTo(280, 80);
+                                    ctx.lineTo(280, 140);
+                                    ctx.lineTo(40, 140);
+                                    ctx.closePath();
+                                    ctx.fill();
+                                    
+                                    // 绘制入射光
+                                    ctx.strokeStyle = '#ff9800';
+                                    ctx.lineWidth = 2;
+                                    
+                                    // 绘制多个入射光和反射光
+                                    for (let x = 80; x < 280; x += 40) {
+                                        // 入射角度与薄膜厚度相关
+                                        const thickness = 80 + (x - 80) * 0.15;
+                                        
+                                        // 入射光
+                                        ctx.beginPath();
+                                        ctx.moveTo(x, 40);
+                                        ctx.lineTo(x, thickness);
+                                        ctx.stroke();
+                                        
+                                        // 薄膜上表面反射光
+                                        ctx.setLineDash([2, 2]);
+                                        ctx.beginPath();
+                                        ctx.moveTo(x, thickness);
+                                        ctx.lineTo(x - 30, 40);
+                                        ctx.stroke();
+                                        ctx.setLineDash([]);
+                                        
+                                        // 穿过薄膜的光
+                                        ctx.beginPath();
+                                        ctx.moveTo(x, thickness);
+                                        ctx.lineTo(x, 140);
+                                        ctx.stroke();
+                                        
+                                        // 从底部反射的光
+                                        ctx.setLineDash([2, 2]);
+                                        ctx.beginPath();
+                                        ctx.moveTo(x, 140);
+                                        ctx.lineTo(x - 20, thickness);
+                                        ctx.stroke();
+                                        ctx.setLineDash([]);
+                                    }
+                                    
+                                    // 绘制干涉条纹
+                                    ctx.fillStyle = '#333';
+                                    ctx.font = '12px Arial';
+                                    ctx.fillText('干涉条纹', 130, 170);
+                                    
+                                    // 绘制条纹
+                                    for (let i = 0; i < 8; i++) {
+                                        const x = 80 + i * 20;
+                                        const brightness = i % 2 === 0 ? 0.1 : 0.7;
+                                        ctx.fillStyle = `rgba(255, 255, 255, ${brightness})`;
+                                        ctx.fillRect(x, 160, 10, 10);
+                                    }
+                                };
+                                
+                                // 等倾干涉示意图
+                                const drawEqualInclinationDiagram = function() {
+                                    const canvas = document.getElementById('equal-inclination-diagram');
+                                    if (!canvas) return;
+                                    
+                                    const ctx = canvas.getContext('2d');
+                                    if (!ctx) return;
+                                    
+                                    // 清空画布
+                                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                    
+                                    // 绘制平行薄膜
+                                    ctx.fillStyle = 'rgba(173, 216, 230, 0.5)';
+                                    ctx.fillRect(40, 100, 240, 30);
+                                    
+                                    // 绘制不同角度的入射光
+                                    const centerX = 160;
+                                    const topY = 40;
+                                    const filmTopY = 100;
+                                    const filmBottomY = 130;
+                                    
+                                    // 垂直入射光
+                                    ctx.strokeStyle = '#ff9800';
+                                    ctx.lineWidth = 2;
+                                    
+                                    // 垂直光线
+                                    ctx.beginPath();
+                                    ctx.moveTo(centerX, topY);
+                                    ctx.lineTo(centerX, filmTopY);
+                                    ctx.stroke();
+                                    
+                                    // 垂直光线在薄膜中传播
+                                    ctx.beginPath();
+                                    ctx.moveTo(centerX, filmTopY);
+                                    ctx.lineTo(centerX, filmBottomY);
+                                    ctx.stroke();
+                                    
+                                    // 垂直光线从底部反射
+                                    ctx.setLineDash([2, 2]);
+                                    ctx.beginPath();
+                                    ctx.moveTo(centerX, filmBottomY);
+                                    ctx.lineTo(centerX, filmTopY);
+                                    ctx.stroke();
+                                    ctx.setLineDash([]);
+                                    
+                                    // 从顶部反射的垂直光线
+                                    ctx.setLineDash([2, 2]);
+                                    ctx.beginPath();
+                                    ctx.moveTo(centerX, filmTopY);
+                                    ctx.lineTo(centerX, topY);
+                                    ctx.stroke();
+                                    ctx.setLineDash([]);
+                                    
+                                    // 斜入射光线（左侧）
+                                    const leftX = centerX - 80;
+                                    
+                                    ctx.beginPath();
+                                    ctx.moveTo(leftX, topY);
+                                    ctx.lineTo(centerX - 40, filmTopY);
+                                    ctx.stroke();
+                                    
+                                    // 左侧光线在薄膜中传播
+                                    ctx.beginPath();
+                                    ctx.moveTo(centerX - 40, filmTopY);
+                                    ctx.lineTo(centerX - 20, filmBottomY);
+                                    ctx.stroke();
+                                    
+                                    // 左侧光线从底部反射
+                                    ctx.setLineDash([2, 2]);
+                                    ctx.beginPath();
+                                    ctx.moveTo(centerX - 20, filmBottomY);
+                                    ctx.lineTo(centerX, filmTopY);
+                                    ctx.stroke();
+                                    ctx.setLineDash([]);
+                                    
+                                    // 左侧光线从顶部反射
+                                    ctx.setLineDash([2, 2]);
+                                    ctx.beginPath();
+                                    ctx.moveTo(centerX - 40, filmTopY);
+                                    ctx.lineTo(centerX - 80, topY);
+                                    ctx.stroke();
+                                    ctx.setLineDash([]);
+                                    
+                                    // 斜入射光线（右侧）
+                                    const rightX = centerX + 80;
+                                    
+                                    ctx.beginPath();
+                                    ctx.moveTo(rightX, topY);
+                                    ctx.lineTo(centerX + 40, filmTopY);
+                                    ctx.stroke();
+                                    
+                                    // 右侧光线在薄膜中传播
+                                    ctx.beginPath();
+                                    ctx.moveTo(centerX + 40, filmTopY);
+                                    ctx.lineTo(centerX + 20, filmBottomY);
+                                    ctx.stroke();
+                                    
+                                    // 右侧光线从底部反射
+                                    ctx.setLineDash([2, 2]);
+                                    ctx.beginPath();
+                                    ctx.moveTo(centerX + 20, filmBottomY);
+                                    ctx.lineTo(centerX, filmTopY);
+                                    ctx.stroke();
+                                    ctx.setLineDash([]);
+                                    
+                                    // 右侧光线从顶部反射
+                                    ctx.setLineDash([2, 2]);
+                                    ctx.beginPath();
+                                    ctx.moveTo(centerX + 40, filmTopY);
+                                    ctx.lineTo(centerX + 80, topY);
+                                    ctx.stroke();
+                                    ctx.setLineDash([]);
+                                    
+                                    // 绘制干涉环
+                                    ctx.fillStyle = '#333';
+                                    ctx.font = '12px Arial';
+                                    ctx.fillText('同心干涉环', 130, 170);
+                                    
+                                    // 绘制干涉环
+                                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+                                    ctx.setLineDash([1, 1]);
+                                    for (let r = 10; r <= 30; r += 10) {
+                                        ctx.beginPath();
+                                        ctx.arc(centerX, 170, r, 0, Math.PI * 2);
+                                        ctx.stroke();
+                                    }
+                                    ctx.setLineDash([]);
+                                };
+                                
+                                // 调用函数绘制图形
+                                setTimeout(function() {
+                                    drawEqualThicknessDiagram();
+                                    drawEqualInclinationDiagram();
+                                }, 100);
+                            });
+                        </script>
+                        
+                        <div class="key-concept">
+                            <p><strong>牛顿环是等厚干涉的经典例子，干涉条纹对应着空气薄膜厚度相等的点，故称为"等厚干涉"。</strong></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="theory-panel">
+                    <h3>实验仪器</h3>
+                    <div class="theory-content">
+                        <div class="instrument-gallery">
+                            <div class="instrument-item">
+                                <img src="images/图片1.jpg" alt="牛顿环实验装置" class="instrument-image">
+                                <p>牛顿环实验装置整体</p>
+                            </div>
+                            <div class="instrument-item">
+                                <img src="images/图片2.png" alt="平凸透镜" class="instrument-image">
+                                <p>平凸透镜（R=1~10m）</p>
+                            </div>
+                            <div class="instrument-item">
+                                <img src="images/图片3.png" alt="钠灯" class="instrument-image">
+                                <p>钠灯（λ=589nm）</p>
+                            </div>
+                            <div class="instrument-item">
+                                <img src="images/图片4.png" alt="平玻璃板" class="instrument-image">
+                                <p>平玻璃板</p>
+                            </div>
+                        </div>
+                        <p>主要仪器设备：</p>
+                        <ul>
+                            <li><strong>平凸透镜</strong>：曲率半径通常在1000-10000 mm之间，是实验的核心部件</li>
+                            <li><strong>平玻璃板</strong>：与透镜接触形成空气薄膜</li>
+                            <li><strong>单色光源</strong>：常用钠灯（波长589 nm）作为光源</li>
+                            <li><strong>读数显微镜</strong>：用于精确测量牛顿环直径</li>
+                            <li><strong>支架和调节装置</strong>：用于固定和调整透镜位置</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="theory-panel">
+                    <h3>牛顿环干涉原理详解</h3>
+                    <div class="theory-content">
+                        <div class="newton-rings-principle-container">
+                            <div class="principle-content">
+                                <h4>1. 牛顿环物理原理</h4>
+                                <p>当平凸透镜放在平面玻璃板上时，透镜与平板间形成一个厚度从中心向外逐渐增大的空气薄膜。当单色光垂直入射时，光线在薄膜上下表面反射产生干涉，形成同心环状的干涉图样。</p>
+                                
+                                <div class="interactive-formula">
+                                    <h4>2. 空气膜厚度计算</h4>
+                                    <p>如果透镜的曲率半径为 \(R\)，离中心距离为 \(r\) 处的空气膜厚度 \(t\) 可以计算为：</p>
+                                    <div class="formula with-tooltip">
+                                        \[ t = \frac{r^2}{2R} \]
+                                        <div class="formula-tooltip">这是根据圆的几何特性推导出的公式，适用于曲率半径远大于干涉环直径的情况</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="interference-conditions">
+                                    <h4>3. 干涉条件</h4>
+                                    <p>对于反射光：</p>
+                                    <div class="condition-cards">
+                                        <div class="condition-card dark-ring">
+                                            <div class="card-header">暗环（相消干涉）</div>
+                                            <div class="card-formula">\(2t = m\lambda\)</div>
+                                            <div class="card-note">其中 \(m\) 为整数</div>
+                                        </div>
+                                        <div class="condition-card bright-ring">
+                                            <div class="card-header">亮环（相长干涉）</div>
+                                            <div class="card-formula">\(2t = (m+\frac{1}{2})\lambda\)</div>
+                                            <div class="card-note">其中 \(m\) 为整数</div>
+                                        </div>
+                                    </div>
+                                    <p class="important-note">注意：中心点总是暗的，因为透镜与平板接触处厚度为0，光波在玻璃-空气和空气-玻璃两个界面反射时发生半波损失。</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="experiment-steps-container">
+                            <div class="experiment-step-section ring-radius-calculation">
+                                <h4>4. 干涉环半径计算</h4>
+                                <div class="calculation-steps">
+                                    <div class="calculation-step">
+                                        <div class="step-content">
+                                            <p>第 \(m\) 个暗环的半径 \(r_m\) 满足：</p>
+                                            <div class="formula step-formula">
+                                                \[ 2 \cdot \frac{r_m^2}{2R} = m\lambda \]
+                                            </div>
+                                        </div>
+                                        <div class="step-arrow">→</div>
+                                        <div class="step-content">
+                                            <div class="formula step-formula">
+                                                \[ r_m^2 = m\lambda R \]
+                                            </div>
+                                        </div>
+                                        <div class="step-arrow">→</div>
+                                        <div class="step-content">
+                                            <p>第 \(m\) 个暗环的直径 \(D_m = 2r_m\)，因此：</p>
+                                            <div class="formula step-formula highlighted">
+                                                \[ D_m^2 = 4m\lambda R \]
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="rings-visualization">
+                                        <div class="visualization-container">
+                                            <canvas id="ring-radius-visualization" width="350" height="200"></canvas>
+                                            <div class="visualization-controls">
+                                                <label for="ring-number">环序号 (m):</label>
+                                                <input type="range" id="ring-number" min="1" max="10" value="3" step="1">
+                                                <span id="ring-number-value">3</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="experiment-step-section experiment-workflow">
+                                <h4>5. 实验操作步骤</h4>
+                                <div class="workflow-steps">
+                                    <div class="workflow-step">
+                                        <div class="step-icon">1</div>
+                                        <div class="step-content">
+                                            <p>将平凸透镜放在平板玻璃上，球面向下</p>
+                                        </div>
+                                    </div>
+                                    <div class="workflow-step">
+                                        <div class="step-icon">2</div>
+                                        <div class="step-content">
+                                            <p>使单色光垂直照射透镜</p>
+                                        </div>
+                                    </div>
+                                    <div class="workflow-step">
+                                        <div class="step-icon">3</div>
+                                        <div class="step-content">
+                                            <p>观察形成的同心环干涉图样</p>
+                                        </div>
+                                    </div>
+                                    <div class="workflow-step">
+                                        <div class="step-icon">4</div>
+                                        <div class="step-content">
+                                            <p>测量各暗环的直径</p>
+                                        </div>
+                                    </div>
+                                    <div class="workflow-step">
+                                        <div class="step-icon">5</div>
+                                        <div class="step-content">
+                                            <p>绘制环序号与直径平方的关系图，计算斜率</p>
+                                        </div>
+                                    </div>
+                                    <div class="workflow-step">
+                                        <div class="step-icon">6</div>
+                                        <div class="step-content">
+                                            <p>根据公式 \(D_m^2 = 4m\lambda R\) 计算曲率半径</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="experiment-step-section radius-measurement">
+                                <h4>6. 测量曲率半径</h4>
+                                <div class="measurement-explanation">
+                                    <div class="explanation-text">
+                                        <p>通过测量不同暗环的直径 \(D_m\)，绘制 \(D_m^2\) 与 \(m\) 的关系图，可得到一条斜率为 \(4\lambda R\) 的直线。由斜率可以计算出透镜的曲率半径：</p>
+                                        <div class="formula highlighted-formula">
+                                            \[ R = \frac{\text{斜率}}{4\lambda} \]
+                                        </div>
+                                    </div>
+                                    <div class="graph-container">
+                                        <canvas id="linear-fit-graph" width="350" height="250"></canvas>
+                                        <p class="graph-caption">环序号(m)与直径平方(D<sub>m</sub><sup>2</sup>)的线性关系图</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <script>
+                            document.addEventListener('DOMContentLoaded', function() {
+                                // 环半径可视化
+                                const drawRingRadiusVisualization = function() {
+                                    const canvas = document.getElementById('ring-radius-visualization');
+                                    if (!canvas) return;
+                                    
+                                    const ctx = canvas.getContext('2d');
+                                    if (!ctx) return;
+                                    
+                                    const ringNumber = parseInt(document.getElementById('ring-number').value) || 3;
+                                    document.getElementById('ring-number-value').textContent = ringNumber;
+                                    
+                                    // 清空画布
+                                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                    
+                                    const centerX = canvas.width / 2;
+                                    const centerY = canvas.height / 2;
+                                    const maxRings = 10;
+                                    
+                                    // 绘制牛顿环背景
+                                    for (let i = 1; i <= maxRings; i++) {
+                                        const radius = Math.sqrt(i) * 15; // 缩放因子
+                                        
+                                        ctx.beginPath();
+                                        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                                        
+                                        if (i % 2 === 1) { // 暗环
+                                            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                                        } else { // 亮环
+                                            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                                        }
+                                        
+                                        ctx.fill();
+                                        ctx.strokeStyle = 'rgba(100, 100, 100, 0.3)';
+                                        ctx.stroke();
+                                    }
+                                    
+                                    // 高亮选中的环
+                                    const selectedRadius = Math.sqrt(ringNumber) * 15;
+                                    ctx.beginPath();
+                                    ctx.arc(centerX, centerY, selectedRadius, 0, Math.PI * 2);
+                                    ctx.strokeStyle = '#ff3300';
+                                    ctx.lineWidth = 2;
+                                    ctx.stroke();
+                                    
+                                    // 绘制半径线
+                                    ctx.beginPath();
+                                    ctx.moveTo(centerX, centerY);
+                                    ctx.lineTo(centerX + selectedRadius, centerY);
+                                    ctx.strokeStyle = '#ff3300';
+                                    ctx.lineWidth = 1.5;
+                                    ctx.setLineDash([3, 3]);
+                                    ctx.stroke();
+                                    ctx.setLineDash([]);
+                                    
+                                    // 标注半径
+                                    ctx.fillStyle = '#ff3300';
+                                    ctx.font = '14px Arial';
+                                    ctx.fillText('r' + ringNumber, centerX + selectedRadius / 2 - 10, centerY - 10);
+                                    
+                                    // 显示公式值
+                                    ctx.fillStyle = '#333';
+                                    ctx.font = '14px Arial';
+                                    ctx.fillText('r' + ringNumber + '² = ' + ringNumber + 'λR', 20, 30);
+                                    ctx.fillText('D' + ringNumber + '² = 4×' + ringNumber + 'λR', 20, 50);
+                                };
+                                
+                                // 线性拟合图
+                                const drawLinearFitGraph = function() {
+                                    const canvas = document.getElementById('linear-fit-graph');
+                                    if (!canvas) return;
+                                    
+                                    const ctx = canvas.getContext('2d');
+                                    if (!ctx) return;
+                                    
+                                    // 清空画布
+                                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                    
+                                    // 绘制坐标轴
+                                    ctx.strokeStyle = '#333';
+                                    ctx.lineWidth = 1;
+                                    
+                                    // x轴
+                                    ctx.beginPath();
+                                    ctx.moveTo(40, 200);
+                                    ctx.lineTo(320, 200);
+                                    ctx.stroke();
+                                    
+                                    // y轴
+                                    ctx.beginPath();
+                                    ctx.moveTo(40, 200);
+                                    ctx.lineTo(40, 30);
+                                    ctx.stroke();
+                                    
+                                    // 坐标轴标签
+                                    ctx.fillStyle = '#333';
+                                    ctx.font = '12px Arial';
+                                    ctx.fillText('环序号 m', 310, 220);
+                                    ctx.fillText('直径平方 D²(mm²)', 10, 20);
+                                    
+                                    // 坐标刻度
+                                    for (let i = 0; i <= 10; i += 2) {
+                                        ctx.beginPath();
+                                        ctx.moveTo(40 + i * 28, 200);
+                                        ctx.lineTo(40 + i * 28, 205);
+                                        ctx.stroke();
+                                        ctx.fillText(i.toString(), 37 + i * 28, 220);
+                                    }
+                                    
+                                    for (let i = 0; i <= 5; i++) {
+                                        const y = 200 - i * 35;
+                                        ctx.beginPath();
+                                        ctx.moveTo(35, y);
+                                        ctx.lineTo(40, y);
+                                        ctx.stroke();
+                                        ctx.fillText((i * 50).toString(), 15, y + 5);
+                                    }
+                                    
+                                    // 模拟数据点
+                                    const dataPoints = [
+                                        {m: 1, d2: 23.6},
+                                        {m: 2, d2: 47.0},
+                                        {m: 3, d2: 70.8},
+                                        {m: 4, d2: 94.3},
+                                        {m: 5, d2: 117.9},
+                                        {m: 6, d2: 141.5},
+                                        {m: 7, d2: 165.0},
+                                        {m: 8, d2: 188.6}
+                                    ];
+                                    
+                                    // 绘制数据点
+                                    ctx.fillStyle = '#0066cc';
+                                    dataPoints.forEach(point => {
+                                        const x = 40 + point.m * 28;
+                                        const y = 200 - point.d2 * 0.7;
+                                        
+                                        ctx.beginPath();
+                                        ctx.arc(x, y, 4, 0, Math.PI * 2);
+                                        ctx.fill();
+                                    });
+                                    
+                                    // 绘制拟合直线
+                                    ctx.strokeStyle = '#ff3300';
+                                    ctx.lineWidth = 2;
+                                    ctx.beginPath();
+                                    ctx.moveTo(40, 200 - 0 * 0.7);
+                                    ctx.lineTo(40 + 10 * 28, 200 - 235 * 0.7);
+                                    ctx.stroke();
+                                    
+                                    // 标注斜率
+                                    ctx.fillStyle = '#ff3300';
+                                    ctx.font = 'italic 14px Arial';
+                                    ctx.fillText('斜率 k = 4λR ≈ 23.6', 120, 70);
+                                };
+                                
+                                // 绑定环序号滑块事件
+                                const ringNumberSlider = document.getElementById('ring-number');
+                                if (ringNumberSlider) {
+                                    ringNumberSlider.addEventListener('input', drawRingRadiusVisualization);
+                                }
+                                
+                                // 初始化绘制
+                                setTimeout(() => {
+                                    drawRingRadiusVisualization();
+                                    drawLinearFitGraph();
+                                }, 500);
+                            });
+                        </script>
+                    </div>
+                </div>
+                
+                <div class="theory-panel">
+                    <h3>实验数据处理方法</h3>
+                    <div class="theory-content">
+                        <p>在实际测量中，我们需要:</p>
+                        <ol>
+                            <li>记录每个暗环的序号和直径</li>
+                            <li>计算直径的平方值</li>
+                            <li>绘制 \(D_m^2\) 与 \(m\) 的关系图</li>
+                            <li>通过线性回归得到最佳直线</li>
+                            <li>由斜率计算曲率半径</li>
+                            <li>计算测量不确定度</li>
+                        </ol>
+                        <p>线性回归公式: \(D_m^2 = k \cdot m + b\)，其中 \(k = 4\lambda R\)</p>
+                        <p>实验中使用多个暗环进行测量可以降低随机误差，提高测量精度。</p>
+                    </div>
+                </div>
+                
+                <div class="theory-panel">
+                    <h3>实验注意事项</h3>
+                    <div class="theory-content">
+                        <!-- 实验注意事项 -->
+                        <div class="experiment-tips">
+                            <div class="tips-container">
+                                <div class="tip-item">
+                                    <div class="tip-icon">🧹</div>
+                                    <div class="tip-text">实验前清洁透镜和玻璃板表面，避免灰尘影响</div>
+                                </div>
+                                <div class="tip-item">
+                                    <div class="tip-icon">💡</div>
+                                    <div class="tip-text">确保光源稳定，避免强度波动</div>
+                                </div>
+                                <div class="tip-item">
+                                    <div class="tip-icon">👁️</div>
+                                    <div class="tip-text">测量时应垂直观察，避免视差误差</div>
+                                </div>
+                                <div class="tip-item">
+                                    <div class="tip-icon">🌡️</div>
+                                    <div class="tip-text">环境应保持恒温，避免热胀冷缩影响测量</div>
+                                </div>
+                                <div class="tip-item">
+                                    <div class="tip-icon">📏</div>
+                                    <div class="tip-text">测量环径时应选择同一侧的边缘作为参考点</div>
+                                </div>
+                                <div class="tip-item">
+                                    <div class="tip-icon">📝</div>
+                                    <div class="tip-text">记录数据时注意标明环的序号，避免混淆</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 数据拟合优化 -->
+                        <div class="data-optimization">
+                            <h4>数据拟合优化</h4>
+                            <div class="optimization-method">
+                                <div class="key-concept">
+                                    <p><strong>直径差法</strong>：当环的中心位置不易确定时，可以采用直径差法计算</p>
+                                </div>
+                                <div class="formula">
+                                    \[ D_m^2 - D_n^2 = 4\lambda R (m-n) \]
+                                </div>
+                                <p class="method-advantage">这种方法避免了中心确定误差的影响，可提高测量精度。</p>
+                                <p class="method-tip">最小二乘法拟合时，可添加权重，使测量精度更高的外环数据获得更大权重。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 3D牛顿环实验演示 -->
+            <div id="3d-demo" class="tab-pane">
+                <div class="theory-panel">
+                    <h3>牛顿环实验装置</h3>
+                    <div class="theory-content">
+                        <p>下方的3D模型展示了牛顿环实验装置和干涉现象形成的过程。您可以通过鼠标旋转、缩放查看各个角度。</p>
+                    </div>
+                </div>
+                
+                <div class="demo-controls">
+                    <button id="start-demo">开始演示</button>
+                    <button id="pause-demo">暂停</button>
+                    <button id="reset-demo">重置</button>
+                    <button id="light-position">调整光源</button>
+                    <button id="camera-top">俯视图</button>
+                    <button id="camera-side">侧视图</button>
+                </div>
+                <div class="demo-container">
+                    <div id="3d-scene-container"></div>
+                </div>
+                <div class="demo-description">
+                    <h3>实验流程演示</h3>
+                    <ol>
+                        <li>将平凸透镜放在平板玻璃上，球面向下</li>
+                        <li>使单色光垂直照射透镜</li>
+                        <li>观察形成的同心环干涉图样</li>
+                        <li>调整实验装置，观察牛顿环的变化</li>
+                        <li>通过调整波长，观察干涉环的变化</li>
+                    </ol>
+                    <p>通过3D演示，您可以直观理解干涉环的形成原理和影响因素。</p>
+                </div>
+            </div>
+            
+            <!-- 牛顿环仿真实验 -->
+            <div id="simulation" class="tab-pane">
+                <div class="theory-panel">
+                    <h3>仿真实验说明</h3>
+                    <div class="theory-content">
+                        <p>本仿真实验允许您调整透镜曲率半径和光的波长，观察牛顿环的变化并进行曲率半径测量。</p>
+                        <p>通过调节参数，您可以验证牛顿环干涉理论并进行数据测量分析。</p>
+                    </div>
+                </div>
+                
+                <div class="control-panel">
+                    <h2>实验参数控制</h2>
+                    <div class="control-group">
+                        <label for="radius">透镜曲率半径 (R):</label>
+                        <input type="range" id="radius" min="1000" max="10000" step="10" value="5000">
+                        <output id="radius-value">5000 mm</output>
+                    </div>
+                    <div class="control-group">
+                        <label for="wavelength">光的波长 (λ):</label>
+                        <div class="wavelength-input">
+                            <input type="range" id="wavelength" min="380" max="780" value="550" class="slider">
+                            <div class="direct-input">
+                                <input type="number" id="wavelength-direct" min="380" max="780" value="550" step="1">
+                                <span>nm</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button id="calculate-btn">计算曲率半径</button>
+                    <div class="result-display">
+                        <p>测量结果: <span id="measurement-result">-- mm</span></p>
+                        <p>测量精度: <span id="measurement-accuracy">--%</span></p>
+                        <p>响应时间: <span id="response-time">-- ms</span></p>
+                    </div>
+                </div>
+                <div class="simulation-display">
+                    <div class="newton-rings-container">
+                        <canvas id="newton-rings-canvas" width="400" height="400"></canvas>
+                        <div class="canvas-controls">
+                            <button id="reset-view" title="重置视图"><i class="reset-icon">↺</i></button>
+                            <div class="zoom-controls">
+                                <button id="zoom-in" title="放大">+</button>
+                                <button id="zoom-out" title="缩小">-</button>
+                            </div>
+                            <div class="ring-info" id="ring-info">点击选择环</div>
+                        </div>
+                        <div class="loading-overlay" id="canvas-loading">
+                            <div class="loading-spinner"></div>
+                            <div class="loading-text">生成牛顿环中...</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="data-analysis">
+                    <h3>数据采集与分析</h3>
+                    <div class="data-table">
+                        <table id="measurement-table">
+                            <thead>
+                                <tr>
+                                    <th>环序号(m)</th>
+                                    <th>环类型</th>
+                                    <th>环直径(D<sub>m</sub>) mm</th>
+                                    <th>直径平方(D<sub>m</sub><sup>2</sup>) mm<sup>2</sup></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1</td>
+                                    <td>--</td>
+                                    <td>--</td>
+                                    <td>--</td>
+                                </tr>
+                                <tr>
+                                    <td>2</td>
+                                    <td>--</td>
+                                    <td>--</td>
+                                    <td>--</td>
+                                </tr>
+                                <tr>
+                                    <td>3</td>
+                                    <td>--</td>
+                                    <td>--</td>
+                                    <td>--</td>
+                                </tr>
+                                <tr>
+                                    <td>4</td>
+                                    <td>--</td>
+                                    <td>--</td>
+                                    <td>--</td>
+                                </tr>
+                                <tr>
+                                    <td>5</td>
+                                    <td>--</td>
+                                    <td>--</td>
+                                    <td>--</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <button id="add-data-point">添加测量点</button>
+                    <button id="clear-data">清除数据</button>
+                    <button id="calculate-from-data">根据测量数据计算</button>
+                </div>
+            </div>
+            
+            <!-- 数据分析和讨论 -->
+            <div id="ai-prediction" class="tab-pane">
+                <div class="theory-panel">
+                    <h3>物理模型与牛顿环分析</h3>
+                    <div class="theory-content">
+                        <p>本系统使用基于牛顿环物理原理的计算模型，自动分析牛顿环干涉图案，预测透镜曲率半径。计算模型通过分析干涉环的位置、间隔和强度模式，直接预测曲率半径，无需手动测量每个环的直径。</p>
+                        <p>模型输入图像（256×256像素）和波长参数，基于物理公式计算曲率半径预测值和置信区间。通过对比预测值与真实值，可评估模型精度。</p>
+                        <p>物理计算模型使用了真实物理原理，确保在各种条件下都能达到高精度的预测结果。</p>
+                    </div>
+                </div>
+                
+                <div class="data-insights-panel">
+                    <h3>数据分析仪表盘</h3>
+                    <div class="dashboard-grid">
+                        <div class="dashboard-card">
+                            <div class="card-header">
+                                <h4>测量精度</h4>
+                                <div class="card-tools">
+                                    <span class="info-tooltip" data-tooltip="显示当前测量的精度水平">ⓘ</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="gauge-container">
+                                    <canvas id="accuracy-gauge"></canvas>
+                                    <div class="gauge-value" id="accuracy-value">--</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="dashboard-card">
+                            <div class="card-header">
+                                <h4>预测趋势</h4>
+                                <div class="card-tools">
+                                    <span class="info-tooltip" data-tooltip="显示多次测量结果的趋势">ⓘ</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="trends-container">
+                                    <canvas id="prediction-trends"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="dashboard-card">
+                            <div class="card-header">
+                                <h4>误差分布</h4>
+                                <div class="card-tools">
+                                    <span class="info-tooltip" data-tooltip="显示测量误差的概率分布">ⓘ</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="distribution-container">
+                                    <canvas id="error-distribution"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="dashboard-card">
+                            <div class="card-header">
+                                <h4>关键指标</h4>
+                                <div class="card-tools">
+                                    <span class="info-tooltip" data-tooltip="显示测量的关键性能指标">ⓘ</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="metrics-container">
+                                    <div class="metric-item">
+                                        <div class="metric-icon">🎯</div>
+                                        <div class="metric-value" id="r-squared">--</div>
+                                        <div class="metric-label">R² 系数</div>
+                                    </div>
+                                    <div class="metric-item">
+                                        <div class="metric-icon">⏱️</div>
+                                        <div class="metric-value" id="avg-response">--</div>
+                                        <div class="metric-label">平均响应时间</div>
+                                    </div>
+                                    <div class="metric-item">
+                                        <div class="metric-icon">📊</div>
+                                        <div class="metric-value" id="std-deviation">--</div>
+                                        <div class="metric-label">标准偏差</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="ai-control-panel">
+                    <h2>设置测试参数</h2>
+                    <div class="control-group">
+                        <label for="test-radius">测试曲率半径 (R):</label>
+                        <input type="range" id="test-radius" min="100" max="300" step="1" value="100">
+                        <output id="test-radius-value">100 mm</output>
+                    </div>
+                    <div class="control-group">
+                        <label for="test-wavelength">测试光波长(λ):</label>
+                        <input type="range" id="test-wavelength" min="400" max="700" step="1" value="589">
+                        <output id="test-wavelength-value">589 nm</output>
+                    </div>
+                    <div class="advanced-controls">
+                        <div class="control-row">
+                            <div class="control-group half-width">
+                                <label for="noise-level">噪声水平:</label>
+                                <input type="range" id="noise-level" min="0" max="10" step="0.5" value="2">
+                                <output id="noise-level-value">2%</output>
+                            </div>
+                            <div class="control-group half-width">
+                                <label for="sample-count">采样数量:</label>
+                                <input type="range" id="sample-count" min="5" max="20" step="1" value="10">
+                                <output id="sample-count-value">10</output>
+                            </div>
+                        </div>
+                        <div class="control-row">
+                            <div class="control-group half-width">
+                                <label for="confidence-level">置信水平:</label>
+                                <select id="confidence-level">
+                                    <option value="0.9">90%</option>
+                                    <option value="0.95" selected>95%</option>
+                                    <option value="0.99">99%</option>
+                                </select>
+                            </div>
+                            <div class="control-group half-width">
+                                <label for="analysis-method">分析方法:</label>
+                                <select id="analysis-method">
+                                    <option value="least-squares" selected>最小二乘法</option>
+                                    <option value="weighted">加权回归</option>
+                                    <option value="robust">稳健回归</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="control-buttons">
+                        <button id="predict-btn" class="primary-btn">开始预测</button>
+                        <button id="reset-btn" class="secondary-btn">重置参数</button>
+                        <button id="export-data" class="secondary-btn">导出数据</button>
+                    </div>
+                    <div class="model-status">
+                        <p>模型状态: <span id="model-status">未加载</span></p>
+                        <p>置信区间: <span id="confidence-interval">±0.00%</span></p>
+                        <div class="toggle-container">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="advanced-view-toggle" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="toggle-label">高级视图</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="prediction-comparison">
+                    <div class="prediction-column">
+                        <h3>预测数据</h3>
+                        <div class="prediction-chart-container">
+                            <canvas id="prediction-chart"></canvas>
+                            <div class="chart-controls">
+                                <button class="chart-control-btn" id="zoom-fit" title="适合视图">
+                                    <span class="control-icon">⤢</span>
+                                </button>
+                                <button class="chart-control-btn" id="toggle-annotation" title="切换标注">
+                                    <span class="control-icon">📝</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="prediction-results" id="prediction-results">
+                            <p>预测半径: <span id="predicted-radius">-- mm</span></p>
+                            <p>预测时间: <span id="prediction-time">-- ms</span></p>
+                            <p>拟合斜率: <span id="fit-slope">-- mm²/环</span></p>
+                        </div>
+                    </div>
+                    <div class="actual-column">
+                        <h3>真实数据</h3>
+                        <div class="actual-chart-container">
+                            <canvas id="actual-chart"></canvas>
+                            <div class="chart-controls">
+                                <button class="chart-control-btn" id="toggle-grid" title="切换网格">
+                                    <span class="control-icon">⊞</span>
+                                </button>
+                                <button class="chart-control-btn" id="toggle-residuals" title="显示残差">
+                                    <span class="control-icon">Δ</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="precision-metrics" id="precision-metrics">
+                            <p>相对误差: <span id="relative-error">--%</span></p>
+                            <p>模型精度: <span id="model-precision">--%</span></p>
+                            <p>残差方差: <span id="residual-variance">--</span></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="interactive-analysis">
+                    <h3>交互式数据探索</h3>
+                    <div class="analysis-tabs">
+                        <div class="analysis-tab active" data-tab="basic-analysis">基础分析</div>
+                        <div class="analysis-tab" data-tab="radius-analysis">半径分析</div>
+                        <div class="analysis-tab" data-tab="wavelength-analysis">波长分析</div>
+                        <div class="analysis-tab" data-tab="error-analysis">误差分析</div>
+                    </div>
+                    <div class="analysis-content">
+                        <div id="basic-analysis" class="analysis-pane active">
+                            <p class="analysis-description">探索牛顿环实验数据的基本属性和关系</p>
+                            <div class="simple-controls">
+                                <div class="control-row">
+                                    <button id="plot-data" class="primary-btn">绘制数据图表</button>
+                                    <button id="clear-plot" class="secondary-btn">清除图表</button>
+                                </div>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="basic-chart"></canvas>
+                            </div>
+                            <div class="analysis-info">
+                                <h4>基本数据统计</h4>
+                                <div class="stats-grid">
+                                    <div class="stat-item">
+                                        <div class="stat-label">数据点数:</div>
+                                        <div class="stat-value" id="data-count">--</div>
+                                    </div>
+                                    <div class="stat-item">
+                                        <div class="stat-label">拟合斜率:</div>
+                                        <div class="stat-value" id="fit-slope">-- mm²/环</div>
+                                    </div>
+                                    <div class="stat-item">
+                                        <div class="stat-label">计算曲率半径:</div>
+                                        <div class="stat-value" id="calc-radius">-- mm</div>
+                                    </div>
+                                    <div class="stat-item">
+                                        <div class="stat-label">测量精度:</div>
+                                        <div class="stat-value" id="measure-precision">--%</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="radius-analysis" class="analysis-pane">
+                            <p class="analysis-description">分析曲率半径对测量结果的影响</p>
+                            <div class="parameter-control">
+                                <label for="radius-slider">测试曲率半径 (mm):</label>
+                                <input type="range" id="radius-slider" min="50" max="300" value="150" step="1">
+                                <span id="radius-value">150 mm</span>
+                                <button id="apply-radius" class="secondary-btn">应用</button>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="radius-chart"></canvas>
+                            </div>
+                            <div class="radius-insights">
+                                <div class="insight-card">
+                                    <h4>半径变化分析</h4>
+                                    <p>曲率半径变大时，环间距变小，但环数增多。这是因为曲率半径增大导致空气薄膜厚度变化率降低，使相邻环之间的厚度差减小。</p>
+                                    <p>当前配置下的环数预估: <span id="ring-count">--</span></p>
+                                    <p>第5环直径预估: <span id="ring-diameter">--</span> mm</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="wavelength-analysis" class="analysis-pane">
+                            <p class="analysis-description">探索不同波长对牛顿环干涉图案的影响</p>
+                            <div class="wavelength-selection">
+                                <div class="selection-row">
+                                    <button class="wavelength-btn" data-wavelength="450" style="background-color: rgba(0, 0, 255, 0.7);">
+                                        <div class="color-indicator" style="background-color: #0000FF;"></div>
+                                        <span>蓝光 (450nm)</span>
+                                    </button>
+                                    <button class="wavelength-btn" data-wavelength="550" style="background-color: rgba(0, 255, 0, 0.5);">
+                                        <div class="color-indicator" style="background-color: #00FF00;"></div>
+                                        <span>绿光 (550nm)</span>
+                                    </button>
+                                    <button class="wavelength-btn active" data-wavelength="589" style="background-color: rgba(255, 255, 0, 0.5);">
+                                        <div class="color-indicator" style="background-color: #FFFF00;"></div>
+                                        <span>黄光 (589nm)</span>
+                                    </button>
+                                    <button class="wavelength-btn" data-wavelength="650" style="background-color: rgba(255, 0, 0, 0.7);">
+                                        <div class="color-indicator" style="background-color: #FF0000;"></div>
+                                        <span>红光 (650nm)</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="wavelength-chart"></canvas>
+                            </div>
+                            <div class="wavelength-comparison">
+                                <table class="comparison-table">
+                                    <thead>
+                                        <tr>
+                                            <th>波长 (nm)</th>
+                                            <th>1环直径 (mm)</th>
+                                            <th>5环直径 (mm)</th>
+                                            <th>相对精度</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>450</td>
+                                            <td id="d1-450">--</td>
+                                            <td id="d5-450">--</td>
+                                            <td id="p-450">--</td>
+                                        </tr>
+                                        <tr>
+                                            <td>550</td>
+                                            <td id="d1-550">--</td>
+                                            <td id="d5-550">--</td>
+                                            <td id="p-550">--</td>
+                                        </tr>
+                                        <tr>
+                                            <td>589</td>
+                                            <td id="d1-589">--</td>
+                                            <td id="d5-589">--</td>
+                                            <td id="p-589">--</td>
+                                        </tr>
+                                        <tr>
+                                            <td>650</td>
+                                            <td id="d1-650">--</td>
+                                            <td id="d5-650">--</td>
+                                            <td id="p-650">--</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="wavelength-note">
+                                <p><i class="note-icon">📝</i> 较短的波长会产生更密集的干涉条纹，理论上可以提高测量精度，但也增加了区分相邻环的难度。</p>
+                            </div>
+                        </div>
+                        
+                        <div id="error-analysis" class="analysis-pane">
+                            <!-- 误差影响模拟 -->
+                            <div class="error-analysis-description">
+                                <h3>误差影响模拟</h3>
+                                <p>选择不同类型的误差，调整误差幅度，观察它们对曲率半径测量结果的影响。</p>
+                            </div>
+                            
+                            <!-- 误差分类展示 -->
+                            <div class="error-categories">
+                                <div class="error-category-card systematic">
+                                    <div class="error-category-header">
+                                        <h4>系统误差</h4>
+                                        <div class="error-percentage" id="systematic-error-percentage">65%</div>
+                                    </div>
+                                    <div class="error-category-body">
+                                        <p>系统误差是由实验装置或测量方法的固有缺陷导致的，它们具有一定的规律性，可通过校准或补偿部分消除。</p>
+                                        <div class="error-cards">
+                                            <div class="error-card">
+                                                <h5>透镜接触问题</h5>
+                                                <p>平凸透镜与平面玻璃的接触点可能存在微小气隙，导致起始环位置判断误差。</p>
+                                            </div>
+                                            <div class="error-card">
+                                                <h5>透镜表面问题</h5>
+                                                <p>平凸透镜或平面玻璃表面可能存在微小划痕或不均匀性。</p>
+                                            </div>
+                                            <div class="error-card">
+                                                <h5>光源问题</h5>
+                                                <p>光源的非单色性导致干涉环边缘不够清晰，影响测量精度。</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="error-category-card random">
+                                    <div class="error-category-header">
+                                        <h4>随机误差</h4>
+                                        <div class="error-percentage" id="random-error-percentage">35%</div>
+                                    </div>
+                                    <div class="error-category-body">
+                                        <p>随机误差由多种不确定因素引起，它们的大小和方向是随机的，可通过多次测量和统计方法减小其影响。</p>
+                                        <div class="error-cards">
+                                            <div class="error-card">
+                                                <h5>主观判断</h5>
+                                                <p>不同观察者对干涉环位置的判断存在差异。</p>
+                                            </div>
+                                            <div class="error-card">
+                                                <h5>读数误差</h5>
+                                                <p>测量工具的精度限制及使用者读数过程中引入的误差。</p>
+                                            </div>
+                                            <div class="error-card">
+                                                <h5>环境因素</h5>
+                                                <p>温度、湿度、振动等环境因素对实验过程的干扰。</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="simulation-controls">
+                                <div class="control-group">
+                                    <label for="error-type-select">误差类型:</label>
+                                    <select id="error-type-select">
+                                        <option value="contact">透镜接触问题</option>
+                                        <option value="surface">透镜表面问题</option>
+                                        <option value="light">光源问题</option>
+                                        <option value="reading">读数误差</option>
+                                        <option value="judgment">主观判断</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="control-group">
+                                    <label for="error-magnitude">误差幅度:</label>
+                                    <input type="range" id="error-magnitude" min="1" max="10" value="5" step="0.5">
+                                    <span id="error-magnitude-value">5%</span>
+                                </div>
+                                
+                                <button id="calculate-error-effect" class="primary-button">计算误差影响</button>
+                            </div>
+                            
+                            <div class="simulation-result">
+                                <div class="chart-container">
+                                    <canvas id="error-impact-chart"></canvas>
+                                </div>
+                                
+                                <div class="result-table">
+                                    <h4>不同误差类型的影响</h4>
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>误差类型</th>
+                                                <th>对曲率半径的影响</th>
+                                                <th>相对误差</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>透镜接触问题</td>
+                                                <td id="contact-impact">±6.0 mm</td>
+                                                <td id="contact-relative">6.0%</td>
+                                            </tr>
+                                            <tr>
+                                                <td>透镜表面问题</td>
+                                                <td id="surface-impact">±4.5 mm</td>
+                                                <td id="surface-relative">4.5%</td>
+                                            </tr>
+                                            <tr>
+                                                <td>光源问题</td>
+                                                <td id="light-impact">±3.0 mm</td>
+                                                <td id="light-relative">3.0%</td>
+                                            </tr>
+                                            <tr>
+                                                <td>读数误差</td>
+                                                <td id="reading-impact">±2.0 mm</td>
+                                                <td id="reading-relative">2.0%</td>
+                                            </tr>
+                                            <tr>
+                                                <td>主观判断</td>
+                                                <td id="judgment-impact">±1.2 mm</td>
+                                                <td id="judgment-relative">1.2%</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            
+                            <!-- 误差处理方法 -->
+                            <div class="error-methods-panel">
+                                <h3>误差处理方法</h3>
+                                <div class="method-cards">
+                                    <div class="method-card">
+                                        <div class="method-icon">1</div>
+                                        <div class="method-content">
+                                            <h4>线性回归分析</h4>
+                                            <p>采用最小二乘法拟合D²与m的线性关系，减小随机误差影响。</p>
+                                        </div>
+                                    </div>
+                                    <div class="method-card">
+                                        <div class="method-icon">2</div>
+                                        <div class="method-content">
+                                            <h4>选择外环测量</h4>
+                                            <p>优先选择较外侧的干涉环进行测量，减小中心判断不准确带来的影响。</p>
+                                        </div>
+                                    </div>
+                                    <div class="method-card">
+                                        <div class="method-icon">3</div>
+                                        <div class="method-content">
+                                            <h4>重复测量法</h4>
+                                            <p>对同一干涉环进行多次测量，取平均值减小随机误差。</p>
+                                        </div>
+                                    </div>
+                                    <div class="method-card">
+                                        <div class="method-icon">4</div>
+                                        <div class="method-content">
+                                            <h4>标准差计算</h4>
+                                            <p>计算多次测量结果的标准差，评估测量精度。</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 拓展内容 -->
+            <div id="extension" class="tab-pane">
+                <div class="theory-panel">
+                    <h3>科学前沿应用</h3>
+                    <div class="theory-content">
+                        <p>牛顿环干涉原理在现代科技中有广泛应用，不仅限于基础物理实验，也扩展到了许多前沿科技领域：</p>
+                        
+                        <div class="frontier-applications">
+                            <div class="application-card">
+                                <h4>光学元件测试</h4>
+                                <p>现代天文望远镜和高精度光学仪器使用干涉原理检测透镜和反射镜表面的精度，可达纳米级精度。</p>
+                            </div>
+                            
+                            <div class="application-card">
+                                <h4>薄膜厚度测量</h4>
+                                <p>半导体行业使用干涉测量技术监控硅片上薄膜沉积的均匀性和厚度，支持微电子制造工艺。</p>
+                            </div>
+                            
+                            <div class="application-card">
+                                <h4>精密长度测量</h4>
+                                <p>干涉仪可测量亚波长级别的微小位移，是精密仪器制造的基础技术。</p>
+                            </div>
+                            
+                            <div class="application-card">
+                                <h4>引力波探测</h4>
+                                <p>LIGO引力波探测器利用激光干涉原理，将引力波引起的微小空间变化转变为可测量的光程差，实现了引力波的探测。这一技术突破导致了2017年诺贝尔物理学奖的颁发。</p>
+                            </div>
+                            
+                            <!-- 添加科学前沿应用视频 -->
+                            <div class="application-video-container" id="application-video-container">
+                                <div class="video-wrapper" id="video-wrapper">
+                                    <video id="application-video" class="application-video" src="视频/WeChat_20250402185252.mp4" preload="metadata" poster="images/video-poster.jpg" playsinline>
+                                        您的浏览器不支持视频播放
+                                    </video>
+                                    <div class="video-play-btn" id="video-play-btn">
+                                        <span class="play-icon">▶</span>
+                                    </div>
+                                </div>
+                                <div class="video-caption">点击播放前沿应用技术演示</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="theory-panel">
+                    <h3>课程思政</h3>
+                    <div class="theory-content">
+                        <p>通过牛顿环实验，我们不仅学习物理知识，也培养多方面能力和素养：</p>
+                        
+                        <div class="ideological-content">
+                            <div class="ideological-item">
+                                <div class="ideological-icon">🔬</div>
+                                <div class="ideological-text">
+                                    <h4>严谨求实的科学态度</h4>
+                                    <p>实验过程中的细致观察、准确测量和数据分析，培养严谨的科学精神和实事求是的态度。</p>
+                                </div>
+                            </div>
+                            
+                            <div class="ideological-item">
+                                <div class="ideological-icon">💡</div>
+                                <div class="ideological-text">
+                                    <h4>创新思维能力</h4>
+                                    <p>拓展思考题引导学生从多角度分析问题，培养创新思维和解决复杂问题的能力。</p>
+                                </div>
+                            </div>
+                            
+                            <div class="ideological-item">
+                                <div class="ideological-icon">⚙️</div>
+                                <div class="ideological-text">
+                                    <h4>精益求精的工匠精神</h4>
+                                    <p>通过提高测量精度的方法学习，培养追求卓越、精益求精的工匠精神。</p>
+                                </div>
+                            </div>
+                            
+                            <div class="ideological-item">
+                                <div class="ideological-icon">🤝</div>
+                                <div class="ideological-text">
+                                    <h4>团队协作能力</h4>
+                                    <p>实验过程中的分工合作，培养团队意识和协作能力。</p>
+                                </div>
+                            </div>
+                            
+                            <div class="ideological-item">
+                                <div class="ideological-icon">🌟</div>
+                                <div class="ideological-text">
+                                    <h4>民族自豪感</h4>
+                                    <p>了解中国在光学领域的重大成就，如王之江院士领导的超大口径非球面光学元件磨制技术，增强民族自豪感和科技创新的使命感。</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="theory-panel">
+                    <h3>拓展思考题</h3>
+                    <div class="theory-content">
+                        <div class="thinking-questions">
+                            <div class="question-card">
+                                <h4>思考题1</h4>
+                                <p>如果使用白光代替单色光，牛顿环会呈现什么样的图案？为什么？</p>
+                                <div class="hint">
+                                    <p>提示：白光由不同波长的可见光组成，不同波长的光会产生不同尺寸的干涉环</p>
+                                </div>
+                            </div>
+                            
+                            <div class="question-card">
+                                <h4>思考题2</h4>
+                                <p>为什么牛顿环中心是暗的而不是亮的？</p>
+                                <div class="hint">
+                                    <p>提示：考虑透镜和平板接触处的光波反射相位变化</p>
+                                </div>
+                            </div>
+                            
+                            <div class="question-card">
+                                <h4>思考题3</h4>
+                                <p>如果空气薄膜中充入其他折射率不同的气体，会对牛顿环产生什么影响？</p>
+                                <div class="hint">
+                                    <p>提示：介质折射率会影响光的波长</p>
+                                </div>
+                            </div>
+                            
+                            <div class="question-card">
+                                <h4>思考题4</h4>
+                                <p>牛顿环实验中，测量哪些环的直径会得到更精确的结果？为什么？</p>
+                                <div class="hint">
+                                    <p>提示：考虑环的尺寸与测量误差的关系</p>
+                                </div>
+                            </div>
+                            
+                            <div class="question-card">
+                                <h4>思考题5</h4>
+                                <p>如果透镜表面不是球面而是非球面，牛顿环会呈现什么样的图案？</p>
+                                <div class="hint">
+                                    <p>提示：空气薄膜厚度的空间分布决定了干涉图样</p>
+                                </div>
+                            </div>
+                            
+                            <div class="question-card">
+                                <h4>思考题6</h4>
+                                <p>已知牛顿环直径的分布规律，如何利用牛顿环测量光的波长？请设计一个简单的实验方案。</p>
+                                <div class="hint">
+                                    <p>提示：将公式D<sub>m</sub><sup>2</sup> = 4mλR变形，以波长λ作为未知量</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- 添加打印实验报告功能 -->
+                        <div class="report-generation">
+                            <h2>实验报告生成</h2>
+                            <hr>
+                            
+                            <p>完成实验后，可以生成实验报告保存或打印。报告包含实验参数、测量结果、误差分析和思考题。</p>
+                            
+                            <div class="report-options">
+                                <div class="option-group">
+                                    <label class="checkbox-container">
+                                        <input type="checkbox" id="include-data" checked>
+                                        <span class="checkmark"></span>
+                                        包含测量数据
+                                    </label>
+                                    
+                                    <label class="checkbox-container">
+                                        <input type="checkbox" id="include-error" checked>
+                                        <span class="checkmark"></span>
+                                        包含误差分析
+                                    </label>
+                                    
+                                    <label class="checkbox-container">
+                                        <input type="checkbox" id="include-questions" checked>
+                                        <span class="checkmark"></span>
+                                        包含拓展思考题
+                                    </label>
+                                </div>
+                                
+                                <div class="student-info">
+                                    <div class="info-row">
+                                        <label for="student-name">学生姓名：</label>
+                                        <input type="text" id="student-name" placeholder="输入姓名">
+                                    </div>
+                                    
+                                    <div class="info-row">
+                                        <label for="student-id">学号：</label>
+                                        <input type="text" id="student-id" placeholder="输入学号">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="report-buttons">
+                                <button id="preview-report" class="report-btn preview-btn">预览报告</button>
+                                <button id="print-report" class="report-btn print-btn">打印报告</button>
+                                <button id="download-report" class="report-btn download-btn" onclick="downloadReport()">下载报告</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <p>© 2025 牛顿环曲率测量虚拟仿真实验平台</p>
+    </footer>
+    
+    <!-- 实验报告预览模态框 -->
+    <div id="report-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>实验报告预览</h2>
+                <span class="report-close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="report-content" class="report-content"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="modal-print-btn" class="report-btn print-btn" onclick="printReport()">打印报告</button>
+                <button id="modal-download-btn" class="report-btn download-btn" onclick="downloadReport()">下载报告</button>
+                <button id="modal-close-btn" class="report-btn close-btn" onclick="document.getElementById('report-modal').style.display='none'">关闭预览</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+    <script src="simulation.js"></script>
+    <script src="3d-demo.js"></script>
+    <script src="ai-model.js"></script>
+</body>
+</html>
