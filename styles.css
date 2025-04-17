@@ -26,6 +26,99 @@ body {
     overflow-x: hidden;
 }
 
+/* 隐藏左上角元素 */
+body::before {
+  display: none !important;
+}
+
+/* 隐藏所有可能包含路径的元素 */
+[class*="path"], [id*="path"], [class*="file"], [id*="file"] {
+  display: none !important;
+}
+
+/* 隐藏Live Server或开发工具的连接指示器 */
+#live-server-indicator,
+#browser-sync-indicator,
+div[id*="indicator"],
+div[class*="indicator"],
+div[id*="connection"],
+div[class*="connection"],
+div[id*="status"],
+div[class*="status"],
+div[id*="socket"],
+div[class*="socket"] {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* 特定隐藏LiveReload/LiveServer/Browser-Sync指示器的样式 */
+.livereload-loading,
+#__bs_notify__,
+.socket-connection-status,
+.connection-status,
+.dev-server-indicator {
+  display: none !important;
+}
+
+/* 在网页加载时隐藏位于左上角的任何固定元素 */
+body > div:first-child,
+body > div:first-of-type {
+  display: none !important;
+}
+
+/* 隐藏页面中所有的蓝色圆点/指示器 */
+.indicator-dot, 
+.progress-point,
+.dot,
+.circle,
+.point,
+.indicator,
+.active-indicator,
+.page-indicator,
+.tab-indicator,
+.progress-indicator,
+.step-indicator,
+.navigation-dot,
+div[class*="dot"],
+div[class*="point"],
+div[class*="indicator"],
+span[class*="dot"],
+span[class*="point"],
+span[class*="indicator"] {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    /* 强制移出屏幕 */
+    position: absolute !important;
+    left: -9999px !important;
+    top: -9999px !important;
+    width: 0 !important;
+    height: 0 !important;
+    pointer-events: none !important;
+    z-index: -9999 !important;
+}
+
+/* 隐藏与theory-panel或h3相关的任何指示器，包括伪元素 */
+.theory-panel::before, .theory-panel::after,
+.theory-panel h3::before, .theory-panel h3::after,
+.tab-pane::before, .tab-pane::after,
+p::before, p::after,
+li::before, li::after,
+div::before, div::after,
+section::before, section::after,
+label::before, label::after,
+.slider::before, .slider::after,
+.control-group::before, .control-group::after {
+    display: none !important;
+    content: none !important; /* 移除伪元素内容 */
+    opacity: 0 !important;
+    visibility: hidden !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+
 header {
     background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
     color: white;

@@ -90,6 +90,54 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 初始绘制牛顿环
     updateNewtonRings();
+
+    // 移除指示器的函数 (加强版)
+    function removeIndicators() {
+        // 查找所有可能的指示器元素 (更宽泛的选择器)
+        const selectors = [
+            'body > div', // 直接在 body 下的 div
+            '[id*="indicator"]', '[class*="indicator"]', // 包含 indicator
+            '[id*="dot"]', '[class*="dot"]',         // 包含 dot
+            '[id*="point"]', '[class*="point"]',       // 包含 point
+            '[id*="status"]', '[class*="status"]',     // 包含 status
+            '[id*="live"]', '[class*="live"]',         // 包含 live
+            '#__bs_notify__'                         // BrowserSync 通知
+        ];
+
+        const potentialIndicators = document.querySelectorAll(selectors.join(', '));
+
+        potentialIndicators.forEach(function(el) {
+            try {
+                const rect = el.getBoundingClientRect();
+                const style = window.getComputedStyle(el);
+
+                // 检查是否固定在左上角附近 或 尺寸非常小 (常见的指示器特征)
+                if (
+                    (style.position === 'fixed' || style.position === 'absolute') &&
+                    (rect.top < 50 && rect.left < 50) ||
+                    (rect.width < 30 && rect.height < 30 && rect.width > 0)
+                ) {
+                    // 尝试多种方式隐藏和移除
+                    el.style.display = 'none';
+                    el.style.opacity = '0';
+                    el.style.visibility = 'hidden';
+                    el.style.pointerEvents = 'none';
+                    if (el.parentNode) {
+                        el.parentNode.removeChild(el);
+                    }
+                    console.log('Removed potential indicator:', el); // 在控制台打印移除信息
+                }
+            } catch (e) {
+                // 忽略无法处理的元素
+                console.warn('Could not process element:', el, e);
+            }
+        });
+    }
+
+    // 确保在 DOM 加载后和一段时间后都执行移除
+    removeIndicators();
+    setTimeout(removeIndicators, 500); // 稍等一会再执行一次
+    setTimeout(removeIndicators, 2000); // 再等久一点执行一次
 });
 
 /**
