@@ -52,7 +52,19 @@
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.9.0/dist/tf.min.js"></script>
+    
+    <!-- 修改TensorFlow.js引入方式，使用不带源映射的最小化版本 -->
+    <script>
+        // 禁用源映射警告
+        window.addEventListener('error', function(event) {
+            if (event.filename && event.filename.includes('tfjs') && event.message && event.message.includes('源映射')) {
+                event.preventDefault(); // 阻止错误输出到控制台
+                return true;
+            }
+        }, true);
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.9.0/dist/tf.min.js" crossorigin="anonymous"></script>
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.5.1/dist/chart.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
@@ -75,7 +87,7 @@
             }
         };
     </script>
-    
+   
     <!-- 添加JavaScript脚本移除指示器 -->
     <script>
         // 页面加载时执行
@@ -1761,5 +1773,45 @@
       });
     });
     </script>
+    <!-- Coze聊天机器人集成 -->
+    <script src="https://lf-cdn.coze.cn/obj/unpkg/flow-platform/chat-app-sdk/1.2.0-beta.6/libs/cn/index.js"></script>
+    <script>
+      new CozeWebSDK.WebChatClient({
+        config: {
+          bot_id: '7496026874678968331',
+        },
+        componentProps: {
+          title: 'Coze',
+        },
+        auth: {
+          type: 'token',
+          token: 'pat_nj1LM2chVSPrPCXOqxIBMjtzNRrN1ypgCDtJcJ2D0357XgNAUjyuT1riCfLc1RRr',
+          onRefreshToken: function () {
+            return 'pat_nj1LM2chVSPrPCXOqxIBMjtzNRrN1ypgCDtJcJ2D0357XgNAUjyuT1riCfLc1RRr'
+          }
+        }
+      });
+    </script>
+    <script src="https://lf-cdn.coze.cn/obj/unpkg/flow-platform/chat-app-sdk/1.2.0-beta.6/libs/cn/index.js"></script>
+    <script>
+      new CozeWebSDK.WebChatClient({
+        config: {
+          bot_id: '7496026874678968331',
+        },
+        componentProps: {
+          title: '您的AI智能助手',
+        },
+        auth: {
+          type: 'token',
+          token: 'pat_nj1LM2chVSPrPCXOqxIBMjtzNRrN1ypgCDtJcJ2D0357XgNAUjyuT1riCfLc1RRr',
+          onRefreshToken: function () {
+            return 'pat_nj1LM2chVSPrPCXOqxIBMjtzNRrN1ypgCDtJcJ2D0357XgNAUjyuT1riCfLc1RRr'
+          }
+        }
+      });
+    </script>
+    <!-- 在</body>标签前添加Coze SDK和main-contact.js引用 -->
+    <script src="https://lf-cdn.coze.cn/obj/unpkg/flow-platform/chat-app-sdk/1.2.0-beta.6/libs/cn/index.js"></script>
+    <script src="main-contact.js"></script>
 </body>
 </html>
