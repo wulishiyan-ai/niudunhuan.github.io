@@ -1,0 +1,33 @@
+edition: 1.0.0
+name: wuliai-website
+access: default
+
+services:
+  website:
+    component: fc
+    props:
+      region: cn-hangzhou
+      service:
+        name: wuliai-website-service
+        description: 'Web service for wuliai.github.io'
+      function:
+        name: wuliai-website-function
+        description: 'Function for hosting wuliai.github.io'
+        runtime: nodejs14
+        codeUri: ./
+        handler: index.handler
+        memorySize: 128
+        timeout: 60
+      triggers:
+        - name: httpTrigger
+          type: http
+          config:
+            authType: anonymous
+            methods:
+              - GET
+              - POST
+      customDomains:
+        - domainName: auto
+          protocol: HTTP
+          routeConfigs:
+            - path: /* 
